@@ -1,17 +1,17 @@
-//
-//  PhotoMapApp.swift
-//  PhotoMap
-//
-//  Created by Johanan Abraham on 2/26/26.
-//
-
 import SwiftUI
+import OSLog
 
 @main
 struct PhotoMapApp: App {
+    
+    private let logger = Logger(subsystem: "com.PhotoMap.app", category: "AppLifecycle")
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MapScreen()
+                .onAppear {
+                    logger.info("App WindowGroup onAppear")
+                }
         }
     }
 }
