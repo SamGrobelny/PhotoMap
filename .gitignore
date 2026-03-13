@@ -1,0 +1,18 @@
+# Xcode
+build/
+DerivedData/
+xcuserdata/
+xcshareddata/
+
+# OS
+.DS_Store
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# CocoaPods
+Pods/
+
+# Secrets
+Secrets.plist

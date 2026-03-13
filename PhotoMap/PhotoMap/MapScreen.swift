@@ -1,7 +1,6 @@
 import SwiftUI
 import MapKit
 import OSLog
-
 struct MapScreen: View {
 
     @Environment(\.scenePhase) private var scenePhase
@@ -15,10 +14,20 @@ struct MapScreen: View {
 
     private let logger = Logger(subsystem: "com.PhotoMap.app", category: "Lifecycle")
 
+    var onLogout: () -> Void
+
     var body: some View {
         NavigationStack {
             Map(position: $position)
                 .navigationTitle("PhotoMap")
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Log Out") {
+                            logger.info("Log out button tapped")
+                            onLogout()
+                        }
+                    }
+                }
         }
         .onAppear {
             let testValue = 123
@@ -32,3 +41,7 @@ struct MapScreen: View {
         }
     }
 }
+#Preview {
+    MapScreen(onLogout: {})
+}
+
