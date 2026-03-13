@@ -12,6 +12,8 @@ import SwiftData
 
 struct MapScreen: View {
 
+    var onLogout: () -> Void
+
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
 
@@ -75,10 +77,17 @@ struct MapScreen: View {
         .navigationTitle("PhotoMap")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showingPhotoList = true
-                } label: {
-                    Image(systemName: "list.bullet")
+                HStack {
+                    Button {
+                        showingPhotoList = true
+                    } label: {
+                        Image(systemName: "list.bullet")
+                    }
+                    Button {
+                        onLogout()
+                    } label: {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                    }
                 }
             }
             ToolbarItem(placement: .topBarLeading) {
