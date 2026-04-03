@@ -18,10 +18,9 @@ struct ChallengeRow: Codable, Identifiable {
 }
 
 // MARK: - user_challenges table (with embedded challenge via Supabase join)
-// Note: user_challenges has no id column — challengeId serves as the Identifiable key.
 
 struct UserChallengeWithDetails: Codable, Identifiable {
-    var id: UUID { challengeId }  // computed — satisfies Identifiable without a DB column
+    var id: UUID { challengeId }
 
     let userId: UUID
     let challengeId: UUID
@@ -43,7 +42,7 @@ struct UserChallengeWithDetails: Codable, Identifiable {
 }
 
 // MARK: - Insert payload for user_challenges
-// expires_at is intentionally omitted — a DB trigger computes it from the challenge type.
+// expires_at is intentionally omitted. a DB trigger computes it from the challenge type.
 
 struct NewUserChallenge: Encodable {
     let userId: UUID
