@@ -21,7 +21,7 @@ struct LeaderboardRow: Codable {
 // MARK: - Display Model
 
 struct LeaderboardEntry: Identifiable {
-    let id: UUID          // userId from DB
+    let id: UUID          
     let rank: Int
     let name: String
     let points: Int

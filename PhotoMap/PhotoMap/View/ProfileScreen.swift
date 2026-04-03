@@ -15,7 +15,7 @@ struct ProfileScreen: View {
         case completed = "Completed"
     }
 
-    // Stubbed stats — wire up to real data later
+    // Stubbed stats
     private let photoCount = 0
     private let challengesCompleted = 0
     private let points = 0
