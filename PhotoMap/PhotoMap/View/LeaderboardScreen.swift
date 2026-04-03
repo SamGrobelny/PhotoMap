@@ -1,35 +1,16 @@
 import SwiftUI
 
-// MARK: - Model
-
-struct LeaderboardEntry: Identifiable {
-    let id = UUID()
-    let rank: Int
-    let name: String
-    let points: Int
-    let isCurrentUser: Bool
-
-    var initials: String {
-        let parts = name.split(separator: " ")
-        return parts.compactMap { $0.first }.prefix(2).map(String.init).joined()
-    }
-}
-
-// MARK: - Sample Data
-
-private let sampleEntries: [LeaderboardEntry] = [
-    LeaderboardEntry(rank: 1, name: "John S.",  points: 1000, isCurrentUser: false),
-    LeaderboardEntry(rank: 2, name: "John S.",  points: 1000, isCurrentUser: false),
-    LeaderboardEntry(rank: 3, name: "Jake B.",  points: 800,  isCurrentUser: false),
-    LeaderboardEntry(rank: 4, name: "You",      points: 750,  isCurrentUser: true),
-    LeaderboardEntry(rank: 5, name: "John S.",  points: 700,  isCurrentUser: false),
-    LeaderboardEntry(rank: 6, name: "Stan S.",  points: 650,  isCurrentUser: false),
-]
-
 // MARK: - Screen
 
 struct LeaderboardScreen: View {
+    @StateObject private var viewModel = LeaderboardViewModel()
+    @State private var selectedScope: Scope = .everyone
     @State private var selectedPeriod: Period = .week
+
+    enum Scope: String, CaseIterable {
+        case everyone = "Everyone"
+        case friends = "Friends"
+    }
 
     enum Period: String, CaseIterable {
         case week = "Week"
@@ -37,58 +18,98 @@ struct LeaderboardScreen: View {
         case allTime = "All Time"
     }
 
-    private var topThree: [LeaderboardEntry] {
-        Array(sampleEntries.prefix(3))
+    private var entries: [LeaderboardEntry] {
+        viewModel.entries(for: selectedPeriod)
     }
 
-    private var remainingEntries: [LeaderboardEntry] {
-        Array(sampleEntries.dropFirst(3))
-    }
+    private var topThree: [LeaderboardEntry] { Array(entries.prefix(3)) }
+    private var remaining: [LeaderboardEntry] { Array(entries.dropFirst(3)) }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Period picker
-                Picker("Period", selection: $selectedPeriod) {
-                    ForEach(Period.allCases, id: \.self) { period in
-                        Text(period.rawValue).tag(period)
+                Picker("Scope", selection: $selectedScope) {
+                    ForEach(Scope.allCases, id: \.self) { scope in
+                        Text(scope.rawValue).tag(scope)
                     }
                 }
                 .pickerStyle(.segmented)
-                .padding()
+                .padding([.horizontal, .top])
 
-                ScrollView {
-                    VStack(spacing: 16) {
-                        // Podium
-                        PodiumView(topThree: topThree)
-                            .padding(.top, 8)
+                if selectedScope == .everyone {
+                    Picker("Period", selection: $selectedPeriod) {
+                        ForEach(Period.allCases, id: \.self) { period in
+                            Text(period.rawValue).tag(period)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .padding()
+                } else {
+                    Spacer().frame(height: 16)
+                }
 
-                        // Remaining ranked rows
-                        VStack(spacing: 8) {
-                            ForEach(remainingEntries) { entry in
-                                LeaderboardRow(entry: entry)
+                if selectedScope == .friends {
+                    Spacer() //TODO: add friends function
+                    ContentUnavailableView(
+                        "No Friends Yet",
+                        systemImage: "person.2",
+                        description: Text("Add friends to compare scores with them.")
+                    )
+                    Spacer()
+                } else if viewModel.isLoading {
+                    Spacer()
+                    ProgressView("Loading Leaderboard...")
+                    Spacer()
+                } else if let error = viewModel.errorMessage {
+                    Spacer()
+                    ContentUnavailableView(
+                        "Couldn't Load Leaderboard",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text(error)
+                    )
+                    Spacer()
+                } else if entries.isEmpty {
+                    Spacer()
+                    ContentUnavailableView(
+                        "No Rankings Yet",
+                        systemImage: "trophy",
+                        description: Text("Complete challenges to earn points and appear here.")
+                    )
+                    Spacer()
+                } else {
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            PodiumView(topThree: topThree)
+                                .padding(.top, 8)
+
+                            VStack(spacing: 8) {
+                                ForEach(remaining) { entry in
+                                    LeaderboardRowView(entry: entry)
+                                }
                             }
-                        }
-                        .padding(.horizontal)
+                            .padding(.horizontal)
 
-                        // Add Friends button
-                        Button {
-                            // TODO: add friends action
-                        } label: {
-                            Label("Add Friends", systemImage: "person.badge.plus")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color(.secondarySystemBackground))
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                            Button {
+                                // TODO: add friends action
+                            } label: {
+                                Label("Add Friends", systemImage: "person.badge.plus")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color(.secondarySystemBackground))
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                            .padding(.horizontal)
+                            .padding(.bottom)
                         }
-                        .padding(.horizontal)
-                        .padding(.bottom)
                     }
                 }
             }
-//            .navigationTitle("Leaderboard")
+            .navigationTitle("Leaderboard")
+            .task {
+                await viewModel.load()
+            }
         }
     }
 }
@@ -98,7 +119,7 @@ struct LeaderboardScreen: View {
 private struct PodiumView: View {
     let topThree: [LeaderboardEntry]
 
-    // Order: 2nd, 1st, 3rd
+    // Display order: 2nd, 1st, 3rd
     private var podiumOrder: [LeaderboardEntry] {
         guard topThree.count == 3 else { return topThree }
         return [topThree[1], topThree[0], topThree[2]]
@@ -108,27 +129,30 @@ private struct PodiumView: View {
         switch rank {
         case 1: return 90
         case 2: return 60
-        case 3: return 45
         default: return 45
         }
     }
 
-    private func avatarSize(for rank: Int) -> CGFloat {
-        rank == 1 ? 64 : 50
+    private func avatarSize(for rank: Int) -> CGFloat { rank == 1 ? 64 : 50 }
+
+    private func avatarColor(for rank: Int) -> Color {
+        switch rank {
+        case 1: return .yellow
+        case 2: return .gray
+        default: return .brown
+        }
     }
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 12) {
             ForEach(podiumOrder) { entry in
                 VStack(spacing: 6) {
-                    // Crown for 1st
                     if entry.rank == 1 {
                         Image(systemName: "crown.fill")
                             .foregroundStyle(.yellow)
                             .font(.title3)
                     }
 
-                    // Avatar
                     ZStack {
                         Circle()
                             .fill(avatarColor(for: entry.rank))
@@ -149,7 +173,6 @@ private struct PodiumView: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
 
-                    // Podium block
                     ZStack {
                         RoundedRectangle(cornerRadius: 8)
                             .fill(avatarColor(for: entry.rank).opacity(0.2))
@@ -165,20 +188,11 @@ private struct PodiumView: View {
         }
         .padding(.horizontal)
     }
-
-    private func avatarColor(for rank: Int) -> Color {
-        switch rank {
-        case 1: return .yellow
-        case 2: return .gray
-        case 3: return .brown
-        default: return .blue
-        }
-    }
 }
 
 // MARK: - Row
 
-private struct LeaderboardRow: View {
+private struct LeaderboardRowView: View {
     let entry: LeaderboardEntry
 
     var body: some View {
@@ -189,7 +203,6 @@ private struct LeaderboardRow: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 24)
 
-            // Avatar
             ZStack {
                 Circle()
                     .fill(entry.isCurrentUser ? Color.blue : Color(.systemGray4))
