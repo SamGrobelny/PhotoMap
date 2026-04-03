@@ -1,4 +1,3 @@
 sam still needs to do:
-	Leaderboard: screen and database
 	Friends: screen and database
 	Profile: finish screen and add cols to profile db table
