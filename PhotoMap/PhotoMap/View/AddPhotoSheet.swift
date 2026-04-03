@@ -3,7 +3,7 @@
 //  PhotoMap
 //
 //  UI layer — Sheet for adding multiple photo entries with captions.
-//  Supports multi-selection from camera roll.
+//  Supports multi-selection from camera roll and in-app camera.
 //  Extracts GPS coordinates and timestamp from photo EXIF metadata.
 //
 
@@ -11,6 +11,7 @@ import SwiftUI
 import PhotosUI
 import CoreLocation
 import Photos
+import AVFoundation
 
 struct AddPhotoSheet: View {
 
@@ -22,6 +23,11 @@ struct AddPhotoSheet: View {
     @State private var processedPhotos: [ProcessedPhoto] = []
     @State private var isProcessing: Bool = false
     @State private var processingProgress: Int = 0
+
+    // Camera states
+    @State private var showingCamera: Bool = false
+    @State private var cameraPermissionDenied: Bool = false
+    @StateObject private var locationManager = LocationManager()
 
     var photosWithLocation: Int {
         processedPhotos.filter { $0.hasValidLocation }.count
@@ -65,7 +71,69 @@ struct AddPhotoSheet: View {
             .onChange(of: selectedItems) { _, newItems in
                 processSelectedPhotos(newItems)
             }
+            .fullScreenCover(isPresented: $showingCamera) {
+                cameraView
+            }
+            .alert("Camera Access Denied", isPresented: $cameraPermissionDenied) {
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("PhotoMap needs camera access to take photos. Please enable it in Settings.")
+            }
+            .onAppear {
+                locationManager.startUpdatingLocation()
+            }
         }
+    }
+
+    private var cameraView: some View {
+        ZStack {
+            CameraViewWrapper(
+                onCapture: { image in
+                    handleCapturedImage(image)
+                    showingCamera = false
+                },
+                onCancel: {
+                    showingCamera = false
+                }
+            )
+            .ignoresSafeArea()
+
+            // Location status overlay
+            VStack {
+                Spacer()
+                locationStatusBanner
+                    .padding(.bottom, 100)
+            }
+        }
+    }
+
+    private var locationStatusBanner: some View {
+        HStack {
+            if locationManager.hasLocation {
+                Image(systemName: "location.fill")
+                    .foregroundStyle(.green)
+                Text("GPS Ready")
+                    .font(.caption)
+            } else if locationManager.isDenied {
+                Image(systemName: "location.slash.fill")
+                    .foregroundStyle(.red)
+                Text("Location Denied")
+                    .font(.caption)
+            } else {
+                ProgressView()
+                    .scaleEffect(0.8)
+                Text("Getting Location...")
+                    .font(.caption)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial, in: Capsule())
     }
 
     // MARK: - View Sections
@@ -75,6 +143,13 @@ struct AddPhotoSheet: View {
             PhotosPicker(selection: $selectedItems, maxSelectionCount: 20, matching: .images) {
                 Label("Select from Library", systemImage: "photo.on.rectangle.angled")
             }
+
+            Button {
+                openCamera()
+            } label: {
+                Label("Take Photo", systemImage: "camera")
+            }
+            .disabled(!CameraViewWrapper.isCameraAvailable)
         }
     }
 
@@ -120,6 +195,42 @@ struct AddPhotoSheet: View {
     }
 
     // MARK: - Methods
+
+    private func openCamera() {
+        let status = CameraViewWrapper.cameraAuthorizationStatus
+
+        switch status {
+        case .authorized:
+            showingCamera = true
+        case .notDetermined:
+            CameraViewWrapper.requestCameraPermission { granted in
+                DispatchQueue.main.async {
+                    if granted {
+                        showingCamera = true
+                    } else {
+                        cameraPermissionDenied = true
+                    }
+                }
+            }
+        case .denied, .restricted:
+            cameraPermissionDenied = true
+        @unknown default:
+            break
+        }
+    }
+
+    private func handleCapturedImage(_ image: UIImage) {
+        guard let imageData = image.jpegData(compressionQuality: 0.7) else { return }
+
+        let photo = ProcessedPhoto(
+            imageData: imageData,
+            location: locationManager.currentLocation,
+            timestamp: Date(),
+            caption: ""
+        )
+
+        processedPhotos.append(photo)
+    }
 
     private func processSelectedPhotos(_ items: [PhotosPickerItem]) {
         guard !items.isEmpty else {
