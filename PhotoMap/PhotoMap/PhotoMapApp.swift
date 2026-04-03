@@ -29,7 +29,7 @@ struct PhotoMapApp: App {
     var body: some Scene {
         WindowGroup {
             if isLoggedIn {
-                MapScreen(onLogout: {
+                MainScreen(onLogout: {
                     Task {
                         try? await supabase.auth.signOut()
                     }
