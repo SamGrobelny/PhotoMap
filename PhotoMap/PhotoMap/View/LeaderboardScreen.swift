@@ -89,19 +89,19 @@ struct LeaderboardScreen: View {
                             }
                             .padding(.horizontal)
 
-                            Button {
-                                // TODO: add friends action
-                            } label: {
-                                Label("Add Friends", systemImage: "person.badge.plus")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .frame(maxWidth: .infinity)
-                                    .padding()
-                                    .background(Color(.secondarySystemBackground))
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                            }
-                            .padding(.horizontal)
-                            .padding(.bottom)
+//                            Button {
+//                                // TODO: add friends action
+//                            } label: {
+//                                Label("Add Friends", systemImage: "person.badge.plus")
+//                                    .font(.subheadline)
+//                                    .fontWeight(.medium)
+//                                    .frame(maxWidth: .infinity)
+//                                    .padding()
+//                                    .background(Color(.secondarySystemBackground))
+//                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+//                            }
+//                            .padding(.horizontal)
+//                            .padding(.bottom)
                         }
                     }
                 }
