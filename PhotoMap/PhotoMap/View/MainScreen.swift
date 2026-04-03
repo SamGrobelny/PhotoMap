@@ -29,7 +29,7 @@ struct MainScreen: View {
             }
 
             SwiftUI.Tab("Profile", systemImage: "person", value: Tab.profile) {
-                ProfileScreen()
+                ProfileScreen(onLogout: onLogout)
             }
         }
     }
@@ -39,3 +39,4 @@ struct MainScreen: View {
     MainScreen(onLogout: {})
         .modelContainer(for: PhotoEntry.self, inMemory: true)
 }
+
