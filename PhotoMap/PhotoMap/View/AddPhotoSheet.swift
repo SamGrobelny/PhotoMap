@@ -2,7 +2,8 @@
 //  AddPhotoSheet.swift
 //  PhotoMap
 //
-//  UI layer — Sheet for adding a new photo entry with caption and image.
+//  UI layer — Sheet for adding multiple photo entries with captions.
+//  Supports multi-selection from camera roll.
 //  Extracts GPS coordinates and timestamp from photo EXIF metadata.
 //
 
@@ -13,79 +14,38 @@ import Photos
 
 struct AddPhotoSheet: View {
 
-    let onSave: (String, Data, CLLocationCoordinate2D, Date) -> Void
+    let onSave: ([ProcessedPhoto]) -> Void
 
     @Environment(\.dismiss) private var dismiss
 
-    @State private var caption: String = ""
-    @State private var selectedItem: PhotosPickerItem?
-    @State private var selectedImageData: Data?
-    @State private var isLoadingImage: Bool = false
+    @State private var selectedItems: [PhotosPickerItem] = []
+    @State private var processedPhotos: [ProcessedPhoto] = []
+    @State private var isProcessing: Bool = false
+    @State private var processingProgress: Int = 0
 
-    // Extracted metadata from photo
-    @State private var extractedLocation: CLLocationCoordinate2D?
-    @State private var extractedTimestamp: Date?
-    @State private var noLocationWarning: Bool = false
+    var photosWithLocation: Int {
+        processedPhotos.filter { $0.hasValidLocation }.count
+    }
+
+    var photosWithoutLocation: Int {
+        processedPhotos.filter { !$0.hasValidLocation }.count
+    }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Photo") {
-                    PhotosPicker(selection: $selectedItem, matching: .images) {
-                        if let data = selectedImageData,
-                           let uiImage = UIImage(data: data) {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(maxHeight: 200)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        } else if isLoadingImage {
-                            ProgressView("Loading metadata...")
-                                .frame(height: 100)
-                        } else {
-                            Label("Select Photo", systemImage: "photo.badge.plus")
-                        }
-                    }
+                photoSelectionSection
+
+                if isProcessing {
+                    processingSection
                 }
 
-                if selectedImageData != nil {
-                    Section("Location (from photo metadata)") {
-                        if let location = extractedLocation {
-                            LabeledContent("Latitude") {
-                                Text(String(format: "%.6f", location.latitude))
-                                    .foregroundStyle(.secondary)
-                            }
-                            LabeledContent("Longitude") {
-                                Text(String(format: "%.6f", location.longitude))
-                                    .foregroundStyle(.secondary)
-                            }
-                        } else {
-                            HStack {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundStyle(.orange)
-                                Text("No GPS data in this photo")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-
-                    Section("Timestamp (from photo metadata)") {
-                        if let timestamp = extractedTimestamp {
-                            Text(timestamp.formatted(date: .long, time: .shortened))
-                                .foregroundStyle(.secondary)
-                        } else {
-                            Text("No timestamp available")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    Section("Caption") {
-                        TextField("Enter a caption...", text: $caption, axis: .vertical)
-                            .lineLimit(3...6)
-                    }
+                if !processedPhotos.isEmpty {
+                    summarySection
+                    photosListSection
                 }
             }
-            .navigationTitle("Add Photo")
+            .navigationTitle("Add Photos")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -95,52 +55,111 @@ struct AddPhotoSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        if let data = selectedImageData,
-                           let location = extractedLocation {
-                            let timestamp = extractedTimestamp ?? Date()
-                            onSave(caption, data, location, timestamp)
-                            dismiss()
-                        }
+                        let validPhotos = processedPhotos.filter { $0.hasValidLocation }
+                        onSave(validPhotos)
+                        dismiss()
                     }
-                    .disabled(selectedImageData == nil || extractedLocation == nil)
+                    .disabled(photosWithLocation == 0)
                 }
             }
-            .onChange(of: selectedItem) { _, newItem in
-                loadImageAndMetadata(from: newItem)
+            .onChange(of: selectedItems) { _, newItems in
+                processSelectedPhotos(newItems)
             }
         }
     }
 
-    private func loadImageAndMetadata(from item: PhotosPickerItem?) {
-        guard let item = item else { return }
+    // MARK: - View Sections
 
-        isLoadingImage = true
-        extractedLocation = nil
-        extractedTimestamp = nil
+    private var photoSelectionSection: some View {
+        Section("Photo") {
+            PhotosPicker(selection: $selectedItems, maxSelectionCount: 20, matching: .images) {
+                Label("Select from Library", systemImage: "photo.on.rectangle.angled")
+            }
+        }
+    }
+
+    private var processingSection: some View {
+        Section {
+            HStack {
+                ProgressView()
+                    .padding(.trailing, 8)
+                Text("Processing \(processingProgress) of \(selectedItems.count) photos...")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var summarySection: some View {
+        Section {
+            HStack {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                Text("\(photosWithLocation) photo\(photosWithLocation == 1 ? "" : "s") with GPS data")
+            }
+
+            if photosWithoutLocation > 0 {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text("\(photosWithoutLocation) photo\(photosWithoutLocation == 1 ? "" : "s") without GPS (will be skipped)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private var photosListSection: some View {
+        Section("Selected Photos") {
+            ForEach($processedPhotos) { $photo in
+                PhotoRowView(photo: $photo)
+            }
+            .onDelete { indexSet in
+                processedPhotos.remove(atOffsets: indexSet)
+            }
+        }
+    }
+
+    // MARK: - Methods
+
+    private func processSelectedPhotos(_ items: [PhotosPickerItem]) {
+        guard !items.isEmpty else {
+            processedPhotos = []
+            return
+        }
+
+        isProcessing = true
+        processingProgress = 0
 
         Task {
-            // Load the image data
-            if let data = try? await item.loadTransferable(type: Data.self) {
-                // Extract EXIF metadata from image data
-                let metadata = extractMetadata(from: data)
+            var newPhotos: [ProcessedPhoto] = []
 
-                // Compress the image for storage
-                var compressedData = data
-                if let uiImage = UIImage(data: data),
-                   let jpegData = uiImage.jpegData(compressionQuality: 0.7) {
-                    compressedData = jpegData
+            for item in items {
+                if let data = try? await item.loadTransferable(type: Data.self) {
+                    let metadata = extractMetadata(from: data)
+
+                    var compressedData = data
+                    if let uiImage = UIImage(data: data),
+                       let jpegData = uiImage.jpegData(compressionQuality: 0.7) {
+                        compressedData = jpegData
+                    }
+
+                    let photo = ProcessedPhoto(
+                        imageData: compressedData,
+                        location: metadata.location,
+                        timestamp: metadata.timestamp,
+                        caption: ""
+                    )
+                    newPhotos.append(photo)
                 }
 
                 await MainActor.run {
-                    selectedImageData = compressedData
-                    extractedLocation = metadata.location
-                    extractedTimestamp = metadata.timestamp
-                    isLoadingImage = false
+                    processingProgress += 1
                 }
-            } else {
-                await MainActor.run {
-                    isLoadingImage = false
-                }
+            }
+
+            await MainActor.run {
+                processedPhotos = newPhotos
+                isProcessing = false
             }
         }
     }
@@ -186,5 +205,61 @@ struct AddPhotoSheet: View {
         }
 
         return (location, timestamp)
+    }
+}
+
+// MARK: - Photo Row View
+
+private struct PhotoRowView: View {
+    @Binding var photo: ProcessedPhoto
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Thumbnail
+            if let uiImage = UIImage(data: photo.imageData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 60, height: 60)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                // GPS status
+                HStack(spacing: 4) {
+                    if photo.hasValidLocation {
+                        Image(systemName: "location.fill")
+                            .foregroundStyle(.green)
+                            .font(.caption)
+                        if let loc = photo.location {
+                            Text(String(format: "%.4f, %.4f", loc.latitude, loc.longitude))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } else {
+                        Image(systemName: "location.slash.fill")
+                            .foregroundStyle(.orange)
+                            .font(.caption)
+                        Text("No GPS")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                }
+
+                // Timestamp
+                if let timestamp = photo.timestamp {
+                    Text(timestamp.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
+                // Caption field
+                TextField("Caption...", text: $photo.caption)
+                    .font(.subheadline)
+                    .textFieldStyle(.plain)
+            }
+        }
+        .padding(.vertical, 4)
+        .opacity(photo.hasValidLocation ? 1.0 : 0.6)
     }
 }

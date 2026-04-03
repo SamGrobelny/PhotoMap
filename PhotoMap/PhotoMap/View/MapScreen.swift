@@ -99,14 +99,8 @@ struct MapScreen: View {
             }
         }
         .sheet(isPresented: $showingAddSheet) {
-            AddPhotoSheet { caption, imageData, location, timestamp in
-                vm.addPhoto(
-                    latitude: location.latitude,
-                    longitude: location.longitude,
-                    caption: caption,
-                    imageData: imageData,
-                    timestamp: timestamp
-                )
+            AddPhotoSheet { photos in
+                vm.addPhotos(photos)
             }
         }
         .sheet(isPresented: $showingPhotoList) {
