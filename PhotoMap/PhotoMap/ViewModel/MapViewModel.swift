@@ -11,6 +11,20 @@ import Foundation
 import SwiftUI
 import Combine
 import OSLog
+import CoreLocation
+
+/// Represents a processed photo ready for saving
+struct ProcessedPhoto: Identifiable {
+    let id = UUID()
+    let imageData: Data
+    let location: CLLocationCoordinate2D?
+    let timestamp: Date?
+    var caption: String
+
+    var hasValidLocation: Bool {
+        location != nil
+    }
+}
 
 @MainActor
 final class MapViewModel: ObservableObject {
@@ -140,6 +154,43 @@ final class MapViewModel: ObservableObject {
         } catch {
             logger.error("Failed to delete entry: \(error.localizedDescription)")
             errorMessage = "Failed to delete photo: \(error.localizedDescription)"
+        }
+    }
+
+    /// Add multiple photos at once (batch insert)
+    func addPhotos(_ photos: [ProcessedPhoto]) {
+        logger.info("Adding \(photos.count) photos in batch")
+
+        var successCount = 0
+
+        for photo in photos {
+            guard let location = photo.location else {
+                logger.warning("Skipping photo without location")
+                continue
+            }
+
+            let entry = PhotoEntry(
+                caption: photo.caption,
+                latitude: location.latitude,
+                longitude: location.longitude,
+                timestamp: photo.timestamp ?? Date(),
+                imageData: photo.imageData
+            )
+
+            do {
+                try repository.create(entry)
+                successCount += 1
+            } catch {
+                logger.error("Failed to add photo: \(error.localizedDescription)")
+            }
+        }
+
+        loadEntries()
+        logger.info("Successfully added \(successCount) of \(photos.count) photos")
+
+        if successCount < photos.count {
+            let skipped = photos.count - successCount
+            errorMessage = "Added \(successCount) photos. \(skipped) were skipped (no GPS data)."
         }
     }
 }
