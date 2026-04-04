@@ -66,12 +66,13 @@ struct FriendProfile: Codable, Identifiable {
 }
 
 // MARK: - Send friend request
-// Used when sending a friend request. Requester_id is set by RLS from auth.uid()
 
 struct NewFriendRequest: Encodable {
+    let requesterId: UUID
     let addresseeId: UUID
 
     enum CodingKeys: String, CodingKey {
+        case requesterId = "requester_id"
         case addresseeId = "addressee_id"
     }
 }
