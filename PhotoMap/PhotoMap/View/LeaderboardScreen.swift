@@ -6,6 +6,7 @@ struct LeaderboardScreen: View {
     @StateObject private var viewModel = LeaderboardViewModel()
     @State private var selectedScope: Scope = .everyone
     @State private var selectedPeriod: Period = .week
+    @State private var showingFriends = false
 
     enum Scope: String, CaseIterable {
         case everyone = "Everyone"
@@ -19,7 +20,10 @@ struct LeaderboardScreen: View {
     }
 
     private var entries: [LeaderboardEntry] {
-        viewModel.entries(for: selectedPeriod)
+        switch selectedScope {
+        case .everyone: return viewModel.entries(for: selectedPeriod)
+        case .friends:  return viewModel.friendEntries(for: selectedPeriod)
+        }
     }
 
     private var topThree: [LeaderboardEntry] { Array(entries.prefix(3)) }
@@ -36,25 +40,23 @@ struct LeaderboardScreen: View {
                 .pickerStyle(.segmented)
                 .padding([.horizontal, .top])
 
-                if selectedScope == .everyone {
-                    Picker("Period", selection: $selectedPeriod) {
-                        ForEach(Period.allCases, id: \.self) { period in
-                            Text(period.rawValue).tag(period)
-                        }
+                Picker("Period", selection: $selectedPeriod) {
+                    ForEach(Period.allCases, id: \.self) { period in
+                        Text(period.rawValue).tag(period)
                     }
-                    .pickerStyle(.segmented)
-                    .padding()
-                } else {
-                    Spacer().frame(height: 16)
                 }
+                .pickerStyle(.segmented)
+                .padding()
 
-                if selectedScope == .friends {
-                    Spacer() //TODO: add friends function
+                if selectedScope == .friends && viewModel.friendIds.isEmpty && !viewModel.isLoading {
+                    Spacer()
                     ContentUnavailableView(
                         "No Friends Yet",
                         systemImage: "person.2",
                         description: Text("Add friends to compare scores with them.")
                     )
+                    Button("Add Friends") { showingFriends = true }
+                        .buttonStyle(.borderedProminent)
                     Spacer()
                 } else if viewModel.isLoading {
                     Spacer()
@@ -89,19 +91,19 @@ struct LeaderboardScreen: View {
                             }
                             .padding(.horizontal)
 
-//                            Button {
-//                                // TODO: add friends action
-//                            } label: {
-//                                Label("Add Friends", systemImage: "person.badge.plus")
-//                                    .font(.subheadline)
-//                                    .fontWeight(.medium)
-//                                    .frame(maxWidth: .infinity)
-//                                    .padding()
-//                                    .background(Color(.secondarySystemBackground))
-//                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-//                            }
-//                            .padding(.horizontal)
-//                            .padding(.bottom)
+                            Button {
+                                showingFriends = true
+                            } label: {
+                                Label("Add Friends", systemImage: "person.badge.plus")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color(.secondarySystemBackground))
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                            .padding(.horizontal)
+                            .padding(.bottom)
                         }
                     }
                 }
@@ -109,6 +111,9 @@ struct LeaderboardScreen: View {
             .navigationTitle("Leaderboard")
             .task {
                 await viewModel.load()
+            }
+            .sheet(isPresented: $showingFriends) {
+                FriendsScreen()
             }
         }
     }

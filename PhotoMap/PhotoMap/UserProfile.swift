@@ -6,7 +6,7 @@
 //
 import Foundation
 
-struct UserProfile: Codable {
+struct UserProfile: Codable, Identifiable {
     let id: UUID
     let username: String
     let createdAt: Date?

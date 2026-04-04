@@ -8,6 +8,7 @@ import Supabase
 final class LeaderboardViewModel: ObservableObject {
 
     @Published private(set) var rows: [LeaderboardRow] = []
+    @Published private(set) var friendIds: Set<UUID> = []
     @Published var isLoading = false
     @Published var errorMessage: String?
 
@@ -23,25 +24,61 @@ final class LeaderboardViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            // Fetch all rows sorted by all-time points descending.
-            // Period switching is handled client-side from the cached rows.
-            rows = try await supabase
+            async let rowsFetch: [LeaderboardRow] = supabase
                 .from("leaderboard")
                 .select()
                 .order("points_all_time", ascending: false)
                 .execute()
                 .value
-            logger.info("Loaded \(self.rows.count) leaderboard entries")
+
+            async let friendsFetch = loadFriendIds()
+
+            rows = try await rowsFetch
+            await friendsFetch
+            logger.info("Loaded \(self.rows.count) leaderboard entries, \(self.friendIds.count) friends")
         } catch {
             logger.error("Failed to load leaderboard: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
         }
     }
 
-    // MARK: - Entries for Period
+    private func loadFriendIds() async {
+        guard let userId = currentUserId else { return }
+        do {
+            let friendships: [Friendship] = try await supabase
+                .from("friendships")
+                .select()
+                .or("requester_id.eq.\(userId),addressee_id.eq.\(userId)")
+                .execute()
+                .value
 
-    /// Returns ranked entries for the given period, re-sorted by that period's points.
+            friendIds = Set(friendships
+                .filter { $0.status == .accepted }
+                .map { $0.requesterId == userId ? $0.addresseeId : $0.requesterId }
+            )
+        } catch {
+            logger.error("Failed to load friend IDs: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - Entries
+
+    /// All users ranked for the given period.
     func entries(for period: LeaderboardScreen.Period) -> [LeaderboardEntry] {
+        ranked(rows: rows, period: period)
+    }
+
+    /// Only the current user and their accepted friends, ranked for the given period.
+    func friendEntries(for period: LeaderboardScreen.Period) -> [LeaderboardEntry] {
+        guard let currentId = currentUserId else { return [] }
+        let relevantIds = friendIds.union([currentId])
+        let filtered = rows.filter { relevantIds.contains($0.userId) }
+        return ranked(rows: filtered, period: period)
+    }
+
+    // MARK: - Helpers
+
+    private func ranked(rows: [LeaderboardRow], period: LeaderboardScreen.Period) -> [LeaderboardEntry] {
         let sorted = rows.sorted { points($0, period) > points($1, period) }
         return sorted.enumerated().map { index, row in
             LeaderboardEntry(
