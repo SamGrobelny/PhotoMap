@@ -3,6 +3,7 @@
 //  PhotoMap
 //
 //  UI layer — observes MapViewModel, never touches the repository directly.
+//  Uses ClusteringMapView for photo pins with automatic clustering.
 //
 
 import SwiftUI
@@ -20,16 +21,17 @@ struct MapScreen: View {
     /// ViewModel is created lazily after we have access to the environment's modelContext
     @State private var viewModel: MapViewModel?
 
-    @State private var position: MapCameraPosition = .region(
-        MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 40.1070, longitude: -83.2670),
-            span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
-        )
+    @State private var region = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 40.1070, longitude: -83.2670),
+        span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
     )
 
     // Sheet state
     @State private var showingAddSheet = false
     @State private var showingPhotoList = false
+
+    // Photo detail state
+    @State private var selectedPhotoEntry: PhotoEntry?
 
     private let logger = Logger(subsystem: "com.PhotoMap.app", category: "MapScreen")
 
@@ -61,19 +63,14 @@ struct MapScreen: View {
 
     @ViewBuilder
     private func mapContent(vm: MapViewModel) -> some View {
-        Map(position: $position) {
-            // Drop a pin for every stored photo entry
-            ForEach(vm.entries) { entry in
-                Annotation(entry.caption, coordinate: CLLocationCoordinate2D(
-                    latitude: entry.latitude,
-                    longitude: entry.longitude)
-                ) {
-                    Image(systemName: "photo.circle.fill")
-                        .font(.title)
-                        .foregroundStyle(.blue)
-                }
-            }
-        }
+        ClusteringMapView(
+            entries: vm.entries,
+            onAnnotationSelected: { entry in
+                selectedPhotoEntry = entry
+            },
+            region: $region
+        )
+        .ignoresSafeArea(edges: .bottom)
         .navigationTitle("PhotoMap")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -99,18 +96,17 @@ struct MapScreen: View {
             }
         }
         .sheet(isPresented: $showingAddSheet) {
-            AddPhotoSheet { caption, imageData, location, timestamp in
-                vm.addPhoto(
-                    latitude: location.latitude,
-                    longitude: location.longitude,
-                    caption: caption,
-                    imageData: imageData,
-                    timestamp: timestamp
-                )
+            AddPhotoSheet { photos in
+                vm.addPhotos(photos)
             }
         }
         .sheet(isPresented: $showingPhotoList) {
             PhotoListScreen(viewModel: vm)
+        }
+        .sheet(item: $selectedPhotoEntry) { entry in
+            NavigationStack {
+                PhotoDetailScreen(entry: entry, viewModel: vm)
+            }
         }
         .alert("Error", isPresented: Binding(
             get: { vm.errorMessage != nil },
