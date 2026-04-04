@@ -82,7 +82,7 @@ final class FriendsViewModel: ObservableObject {
                 .execute()
                 .value
 
-            logger.info("Loaded \(friends.count) friends, \(pendingRequests.count) pending requests")
+            logger.info("Loaded \(self.friends.count) friends, \(self.pendingRequests.count) pending requests")
         } catch {
             logger.error("Failed to load friends data: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
