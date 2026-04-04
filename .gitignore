@@ -16,3 +16,7 @@ Pods/
 
 # Secrets
 Secrets.plist
+
+# Neovim
+.nvim
+PhotoMap/buildServer.json

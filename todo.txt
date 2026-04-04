@@ -1,0 +1,3 @@
+sam still needs to do:
+	Friends: screen and database
+	Profile: finish screen and add cols to profile db table
