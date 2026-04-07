@@ -32,11 +32,14 @@ final class ChallengesViewModel: ObservableObject {
                 .eq("user_id", value: userId)
                 .execute()
                 .value
+            
+            challenges = results.map(Challenge.init)
 
-            if results.isEmpty {
+            let hasIncomplete = results.contains { !$0.isCompleted }
+            if !hasIncomplete {
+                // No active challenges. Assign a new batch
                 try await assignChallenges(userId: userId)
             } else {
-                challenges = results.map(Challenge.init)
                 logger.info("Loaded \(results.count) challenges")
             }
         } catch {
