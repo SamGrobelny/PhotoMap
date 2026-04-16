@@ -80,11 +80,15 @@ struct MapScreen: View {
                     } label: {
                         Image(systemName: "list.bullet")
                     }
+                    .accessibilityLabel("Photo list")
+                    .accessibilityHint("View all photos in a list")
                     Button {
                         onLogout()
                     } label: {
                         Image(systemName: "rectangle.portrait.and.arrow.right")
                     }
+                    .accessibilityLabel("Sign out")
+                    .accessibilityHint("Sign out of your account")
                 }
             }
             ToolbarItem(placement: .topBarLeading) {
@@ -93,6 +97,8 @@ struct MapScreen: View {
                 } label: {
                     Image(systemName: "plus")
                 }
+                .accessibilityLabel("Add photo")
+                .accessibilityHint("Import a photo from your library")
             }
         }
         .sheet(isPresented: $showingAddSheet) {
