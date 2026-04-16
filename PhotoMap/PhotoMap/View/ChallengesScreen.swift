@@ -100,6 +100,8 @@ struct ChallengesScreen: View {
                 }
                 .pickerStyle(.segmented)
                 .padding()
+                .accessibilityLabel("Challenge filter")
+                .accessibilityHint("Select to show active or completed challenges")
 
                 if viewModel.isLoading {
                     Spacer()
@@ -169,11 +171,14 @@ private struct ChallengeCard: View {
                     .background(challenge.difficulty.color.opacity(0.15))
                     .foregroundStyle(challenge.difficulty.color)
                     .clipShape(Capsule())
+                    .accessibilityLabel("\(challenge.difficulty.label) difficulty")
             }
 
             // Progress bar
             ProgressView(value: challenge.progress)
                 .tint(challenge.isCompleted ? .gray : .green)
+                .accessibilityLabel("Progress")
+                .accessibilityValue("\(Int(challenge.progress * 100)) percent complete, \(challenge.current) of \(challenge.goal) \(challenge.unit)")
 
             // Footer row
             HStack {
@@ -193,6 +198,8 @@ private struct ChallengeCard: View {
         .padding()
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 14))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(challenge.title), \(challenge.difficulty.label) difficulty, \(challenge.current) of \(challenge.goal) \(challenge.unit), \(challenge.timeRemaining)")
     }
 }
 
