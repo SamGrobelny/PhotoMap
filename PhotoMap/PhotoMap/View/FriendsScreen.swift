@@ -204,16 +204,21 @@ private struct AvatarView: View {
     let username: String
     let size: CGFloat
 
+    // Dynamic Type support for avatar size
+    @ScaledMetric private var scaledSize: CGFloat = 40
+
     var body: some View {
+        let displaySize = size == 40 ? scaledSize : size
         ZStack {
             Circle()
                 .fill(Color.blue.opacity(0.15))
-                .frame(width: size, height: size)
+                .frame(width: displaySize, height: displaySize)
             Text(String(username.prefix(2)).uppercased())
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundStyle(.blue)
         }
+        .accessibilityHidden(true)
     }
 }
 
