@@ -11,6 +11,9 @@ struct ProfileScreen: View {
     @State private var selectedTab: ContentTab = .photos
     @StateObject private var friendsViewModel = FriendsViewModel()
 
+    // Dynamic Type support for avatar size
+    @ScaledMetric(relativeTo: .largeTitle) private var avatarSize: CGFloat = 72
+
     enum ContentTab: String, CaseIterable {
         case photos = "Photos"
         case challenges = "Challenges"
@@ -93,12 +96,13 @@ struct ProfileScreen: View {
         ZStack {
             Circle()
                 .fill(Color.green.opacity(0.75))
-                .frame(width: 72, height: 72)
+                .frame(width: avatarSize, height: avatarSize)
             Text(initials)
                 .font(.title)
                 .fontWeight(.semibold)
                 .foregroundStyle(.white)
         }
+        .accessibilityHidden(true)
     }
 
     private var initials: String {
