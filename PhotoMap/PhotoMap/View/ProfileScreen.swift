@@ -11,6 +11,9 @@ struct ProfileScreen: View {
     @State private var selectedTab: ContentTab = .photos
     @StateObject private var friendsViewModel = FriendsViewModel()
 
+    // Dynamic Type support for avatar size
+    @ScaledMetric(relativeTo: .largeTitle) private var avatarSize: CGFloat = 72
+
     enum ContentTab: String, CaseIterable {
         case photos = "Photos"
         case challenges = "Challenges"
@@ -39,11 +42,15 @@ struct ProfileScreen: View {
                     } label: {
                         Image(systemName: "gearshape")
                     }
+                    .accessibilityLabel("Settings")
+                    .accessibilityHint("Sign out of your account")
                 }
             }
             .alert("Sign Out", isPresented: $showSignOutAlert) {
                 Button("Cancel", role: .cancel) {}
+                    .accessibilityLabel("Cancel sign out")
                 Button("Sign Out", role: .destructive) { onLogout() }
+                    .accessibilityLabel("Confirm sign out")
             } message: {
                 Text("Are you sure you want to sign out?")
             }
@@ -89,12 +96,13 @@ struct ProfileScreen: View {
         ZStack {
             Circle()
                 .fill(Color.green.opacity(0.75))
-                .frame(width: 72, height: 72)
+                .frame(width: avatarSize, height: avatarSize)
             Text(initials)
                 .font(.title)
                 .fontWeight(.semibold)
                 .foregroundStyle(.white)
         }
+        .accessibilityHidden(true)
     }
 
     private var initials: String {
@@ -121,6 +129,7 @@ struct ProfileScreen: View {
                         .padding(.vertical, 2)
                         .background(Color.red)
                         .clipShape(Capsule())
+                        .accessibilityLabel("\(friendsViewModel.pendingRequests.count) pending friend request\(friendsViewModel.pendingRequests.count == 1 ? "" : "s")")
                 }
                 Spacer()
                 Button("Manage") { showingFriends = true }
@@ -148,12 +157,14 @@ struct ProfileScreen: View {
                             .buttonStyle(.bordered)
                             .tint(.red)
                             .controlSize(.small)
+                            .accessibilityLabel("Decline request from \(requester.username)")
                             Button("Accept") {
                                 Task { await friendsViewModel.accept(from: requester.id) }
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(.green)
                             .controlSize(.small)
+                            .accessibilityLabel("Accept request from \(requester.username)")
                         }
                         .padding(10)
                         .background(Color.orange.opacity(0.08))

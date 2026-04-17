@@ -98,6 +98,8 @@ struct CameraScreen: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 .disabled(!locationManager.hasLocation)
+                .accessibilityLabel("Open Camera")
+                .accessibilityHint(locationManager.hasLocation ? "Take a photo at your current location" : "Waiting for GPS location before capturing")
 
                 if !locationManager.hasLocation && !locationManager.isDenied {
                     Text("Waiting for GPS location before capturing...")
@@ -122,22 +124,29 @@ struct CameraScreen: View {
                 HStack {
                     Image(systemName: "location.fill")
                         .foregroundStyle(.green)
+                        .accessibilityHidden(true)
                     Text("GPS Ready")
                         .font(.headline)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("GPS status: Ready")
 
                 Text(String(format: "%.6f, %.6f", location.latitude, location.longitude))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .monospaced()
+                    .accessibilityLabel("Coordinates: \(String(format: "%.4f", location.latitude)) latitude, \(String(format: "%.4f", location.longitude)) longitude")
 
             } else if locationManager.isDenied {
                 HStack {
                     Image(systemName: "location.slash.fill")
                         .foregroundStyle(.red)
+                        .accessibilityHidden(true)
                     Text("Location Access Denied")
                         .font(.headline)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("GPS status: Location access denied")
 
                 Button("Open Settings") {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -150,9 +159,12 @@ struct CameraScreen: View {
                 HStack {
                     Image(systemName: "location")
                         .foregroundStyle(.orange)
+                        .accessibilityHidden(true)
                     Text("Location Permission Needed")
                         .font(.headline)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("GPS status: Permission needed")
 
                 Button("Enable Location") {
                     locationManager.requestPermission()
@@ -162,10 +174,13 @@ struct CameraScreen: View {
             } else {
                 HStack {
                     ProgressView()
+                        .accessibilityHidden(true)
                     Text("Getting Location...")
                         .font(.headline)
                 }
                 .foregroundStyle(.secondary)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("GPS status: Getting location")
             }
         }
         .padding()
@@ -189,16 +204,21 @@ struct CameraScreen: View {
                 HStack {
                     Image(systemName: "location.fill")
                         .foregroundStyle(.green)
+                        .accessibilityHidden(true)
                     Text(String(format: "%.6f, %.6f", location.latitude, location.longitude))
                         .font(.caption)
                         .monospaced()
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Photo location: \(String(format: "%.4f", location.latitude)) latitude, \(String(format: "%.4f", location.longitude)) longitude")
             }
 
             // Caption field
             TextField("Add a caption...", text: $caption, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(2...4)
+                .accessibilityLabel("Photo caption")
+                .accessibilityHint("Enter a description for your photo")
 
             // Save button
             Button {
@@ -222,6 +242,8 @@ struct CameraScreen: View {
                 }
             }
             .disabled(isSaving || capturedLocation == nil)
+            .accessibilityLabel(isSaving ? "Saving photo" : "Save to Map")
+            .accessibilityHint("Save this photo to your photo map")
         }
     }
 

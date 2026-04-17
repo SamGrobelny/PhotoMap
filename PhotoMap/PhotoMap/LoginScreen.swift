@@ -40,6 +40,8 @@ struct LoginScreen: View {
                         .textContentType(.emailAddress)
                         .keyboardType(.emailAddress)
                         .autocapitalization(.none)
+                        .accessibilityLabel("Email address")
+                        .accessibilityHint("Enter your email address")
 
                     if isSignUp && !email.isEmpty && !isEmailValid {
                         Text("Please enter a valid email address")
@@ -57,12 +59,16 @@ struct LoginScreen: View {
                                 .onChange(of: username) {
                                     checkUsernameAvailability()
                                 }
+                                .accessibilityLabel("Username")
+                                .accessibilityHint("Choose a unique username")
                             if isCheckingUsername {
                                 ProgressView()
                                     .scaleEffect(0.8)
+                                    .accessibilityLabel("Checking username availability")
                             } else if !username.isEmpty {
                                 Image(systemName: isUsernameTaken ? "xmark.circle.fill" : "checkmark.circle.fill")
                                     .foregroundColor(isUsernameTaken ? .red : .green)
+                                    .accessibilityLabel(isUsernameTaken ? "Username is taken" : "Username is available")
                             }
                         }
                         if isUsernameTaken {
@@ -77,6 +83,8 @@ struct LoginScreen: View {
                         .textFieldStyle(.roundedBorder)
                         .textContentType(.password)
                         .autocapitalization(.none)
+                        .accessibilityLabel("Password")
+                        .accessibilityHint(isSignUp ? "Create a password with at least 8 characters" : "Enter your password")
                 }
                 .padding(.horizontal, 40)
                 .padding(.top, 40)
@@ -88,14 +96,19 @@ struct LoginScreen: View {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(.red)
                                     .font(.caption2)
+                                    .accessibilityHidden(true)
                                 Text(error)
                             }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("Missing requirement: \(error)")
                         }
                     }
                     .font(.caption)
                     .foregroundColor(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 40)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel("Password requirements")
                 }
 
                 if let errorMessage {

@@ -126,6 +126,8 @@ private struct SearchResultRow: View {
             Button("Add", action: onAdd)
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
+                .accessibilityLabel("Add \(profile.username) as friend")
+                .accessibilityHint("Send a friend request")
         case .requestSent:
             Text("Pending")
                 .font(.caption)
@@ -134,14 +136,18 @@ private struct SearchResultRow: View {
                 .padding(.vertical, 5)
                 .background(Color(.systemGray5))
                 .clipShape(Capsule())
+                .accessibilityLabel("Friend request pending")
+                .accessibilityHint("Waiting for \(profile.username) to respond")
         case .requestReceived:
             Button("Accept", action: onAccept)
                 .buttonStyle(.borderedProminent)
                 .tint(.green)
                 .controlSize(.small)
+                .accessibilityLabel("Accept friend request from \(profile.username)")
         case .friends:
             Image(systemName: "checkmark")
                 .foregroundStyle(.secondary)
+                .accessibilityLabel("Already friends with \(profile.username)")
         }
     }
 }
@@ -163,12 +169,16 @@ private struct PendingRequestRow: View {
                 .buttonStyle(.bordered)
                 .tint(.red)
                 .controlSize(.small)
+                .accessibilityLabel("Decline request from \(profile.username)")
             Button("Accept", action: onAccept)
                 .buttonStyle(.borderedProminent)
                 .tint(.green)
                 .controlSize(.small)
+                .accessibilityLabel("Accept request from \(profile.username)")
         }
         .padding(.vertical, 2)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Friend request from \(profile.username)")
     }
 }
 
@@ -183,6 +193,8 @@ private struct FriendRow: View {
             Text(profile.username)
                 .font(.subheadline)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Friend: \(profile.username)")
     }
 }
 
@@ -192,16 +204,21 @@ private struct AvatarView: View {
     let username: String
     let size: CGFloat
 
+    // Dynamic Type support for avatar size
+    @ScaledMetric private var scaledSize: CGFloat = 40
+
     var body: some View {
+        let displaySize = size == 40 ? scaledSize : size
         ZStack {
             Circle()
                 .fill(Color.blue.opacity(0.15))
-                .frame(width: size, height: size)
+                .frame(width: displaySize, height: displaySize)
             Text(String(username.prefix(2)).uppercased())
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundStyle(.blue)
         }
+        .accessibilityHidden(true)
     }
 }
 

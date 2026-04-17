@@ -39,6 +39,8 @@ struct LeaderboardScreen: View {
                 }
                 .pickerStyle(.segmented)
                 .padding([.horizontal, .top])
+                .accessibilityLabel("Leaderboard scope")
+                .accessibilityHint("Select to show everyone or just friends")
 
                 Picker("Period", selection: $selectedPeriod) {
                     ForEach(Period.allCases, id: \.self) { period in
@@ -47,6 +49,8 @@ struct LeaderboardScreen: View {
                 }
                 .pickerStyle(.segmented)
                 .padding()
+                .accessibilityLabel("Time period")
+                .accessibilityHint("Select week, month, or all time rankings")
 
                 if selectedScope == .friends && viewModel.friendIds.isEmpty && !viewModel.isLoading {
                     Spacer()
@@ -124,6 +128,15 @@ struct LeaderboardScreen: View {
 private struct PodiumView: View {
     let topThree: [LeaderboardEntry]
 
+    // Dynamic Type support for podium heights
+    @ScaledMetric(relativeTo: .body) private var podiumHeightFirst: CGFloat = 90
+    @ScaledMetric(relativeTo: .body) private var podiumHeightSecond: CGFloat = 60
+    @ScaledMetric(relativeTo: .body) private var podiumHeightThird: CGFloat = 45
+
+    // Dynamic Type support for avatar sizes
+    @ScaledMetric(relativeTo: .body) private var avatarSizeFirst: CGFloat = 64
+    @ScaledMetric(relativeTo: .body) private var avatarSizeOther: CGFloat = 50
+
     // Display order: 2nd, 1st, 3rd
     private var podiumOrder: [LeaderboardEntry] {
         guard topThree.count == 3 else { return topThree }
@@ -132,13 +145,13 @@ private struct PodiumView: View {
 
     private func podiumHeight(for rank: Int) -> CGFloat {
         switch rank {
-        case 1: return 90
-        case 2: return 60
-        default: return 45
+        case 1: return podiumHeightFirst
+        case 2: return podiumHeightSecond
+        default: return podiumHeightThird
         }
     }
 
-    private func avatarSize(for rank: Int) -> CGFloat { rank == 1 ? 64 : 50 }
+    private func avatarSize(for rank: Int) -> CGFloat { rank == 1 ? avatarSizeFirst : avatarSizeOther }
 
     private func avatarColor(for rank: Int) -> Color {
         switch rank {
@@ -156,6 +169,7 @@ private struct PodiumView: View {
                         Image(systemName: "crown.fill")
                             .foregroundStyle(.yellow)
                             .font(.title3)
+                            .accessibilityHidden(true)
                     }
 
                     ZStack {
@@ -189,6 +203,8 @@ private struct PodiumView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Rank \(entry.rank), \(entry.name), \(entry.points) points")
             }
         }
         .padding(.horizontal)
@@ -236,6 +252,9 @@ private struct LeaderboardRowView: View {
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(entry.isCurrentUser ? Color.blue.opacity(0.4) : .clear, lineWidth: 1)
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Rank \(entry.rank), \(entry.name), \(entry.points) points")
+        .accessibilityHint(entry.isCurrentUser ? "This is you" : "")
     }
 }
 
