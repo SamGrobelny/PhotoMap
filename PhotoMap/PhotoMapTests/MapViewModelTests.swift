@@ -170,10 +170,9 @@ final class MapViewModelIntegrationTests: XCTestCase {
 
         // Then
         XCTAssertEqual(viewModel.entries.count, 1, "Should have one entry after adding photo")
-        let entry = viewModel.entries.first!
-        XCTAssertEqual(entry.caption, caption)
-        XCTAssertEqual(entry.latitude, latitude, accuracy: 0.0001)
-        XCTAssertEqual(entry.longitude, longitude, accuracy: 0.0001)
+        XCTAssertEqual(viewModel.entries.first?.caption, caption)
+        XCTAssertEqual(viewModel.entries.first?.latitude, latitude, accuracy: 0.0001)
+        XCTAssertEqual(viewModel.entries.first?.longitude, longitude, accuracy: 0.0001)
     }
 
     func testAddPhoto_withOptionalMetadata() async {
@@ -189,10 +188,10 @@ final class MapViewModelIntegrationTests: XCTestCase {
         )
 
         // Then
-        let entry = viewModel.entries.first!
-        XCTAssertEqual(entry.originalFilename, "IMG_001.jpg")
-        XCTAssertEqual(entry.deviceModel, "iPhone 15")
-        XCTAssertEqual(entry.altitude, 250.0)
+        let entry = viewModel.entries.first
+        XCTAssertEqual(entry?.originalFilename, "IMG_001.jpg")
+        XCTAssertEqual(entry?.deviceModel, "iPhone 15")
+        XCTAssertEqual(entry?.altitude, 250.0)
     }
 
     func testUpdateCaption_updatesEntry() async {
@@ -226,9 +225,8 @@ final class MapViewModelIntegrationTests: XCTestCase {
         viewModel.updateLocation(for: entry, latitude: 41.0, longitude: -84.0)
 
         // Then
-        let updatedEntry = viewModel.entries.first!
-        XCTAssertEqual(updatedEntry.latitude, 41.0, accuracy: 0.0001)
-        XCTAssertEqual(updatedEntry.longitude, -84.0, accuracy: 0.0001)
+        XCTAssertEqual(viewModel.entries.first?.latitude, 41.0, accuracy: 0.0001)
+        XCTAssertEqual(viewModel.entries.first?.longitude, -84.0, accuracy: 0.0001)
     }
 
     func testDeleteEntry_removesFromRepository() async {
