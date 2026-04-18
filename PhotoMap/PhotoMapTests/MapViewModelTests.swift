@@ -153,7 +153,7 @@ final class MapViewModelIntegrationTests: XCTestCase {
         XCTAssertNil(viewModel.errorMessage, "No error should occur")
     }
 
-    func testAddPhoto_addsEntryToRepository() async {
+    func testAddPhoto_addsEntryToRepository() async throws {
         // Given
         let caption = "Test Photo"
         let latitude = 40.1070
@@ -170,9 +170,10 @@ final class MapViewModelIntegrationTests: XCTestCase {
 
         // Then
         XCTAssertEqual(viewModel.entries.count, 1, "Should have one entry after adding photo")
-        XCTAssertEqual(viewModel.entries.first?.caption, caption)
-        XCTAssertEqual(viewModel.entries.first?.latitude, latitude, accuracy: 0.0001)
-        XCTAssertEqual(viewModel.entries.first?.longitude, longitude, accuracy: 0.0001)
+        let entry = try XCTUnwrap(viewModel.entries.first)
+        XCTAssertEqual(entry.caption, caption)
+        XCTAssertEqual(entry.latitude, latitude, accuracy: 0.0001)
+        XCTAssertEqual(entry.longitude, longitude, accuracy: 0.0001)
     }
 
     func testAddPhoto_withOptionalMetadata() async {
@@ -211,7 +212,7 @@ final class MapViewModelIntegrationTests: XCTestCase {
         XCTAssertEqual(viewModel.entries.first?.caption, "Updated Caption")
     }
 
-    func testUpdateLocation_updatesEntry() async {
+    func testUpdateLocation_updatesEntry() async throws {
         // Given
         viewModel.addPhoto(
             latitude: 40.0,
@@ -225,8 +226,9 @@ final class MapViewModelIntegrationTests: XCTestCase {
         viewModel.updateLocation(for: entry, latitude: 41.0, longitude: -84.0)
 
         // Then
-        XCTAssertEqual(viewModel.entries.first?.latitude, 41.0, accuracy: 0.0001)
-        XCTAssertEqual(viewModel.entries.first?.longitude, -84.0, accuracy: 0.0001)
+        let updated = try XCTUnwrap(viewModel.entries.first)
+        XCTAssertEqual(updated.latitude, 41.0, accuracy: 0.0001)
+        XCTAssertEqual(updated.longitude, -84.0, accuracy: 0.0001)
     }
 
     func testDeleteEntry_removesFromRepository() async {

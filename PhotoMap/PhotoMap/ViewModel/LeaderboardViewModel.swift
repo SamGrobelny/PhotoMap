@@ -7,11 +7,19 @@ import Supabase
 @MainActor
 final class LeaderboardViewModel: ObservableObject {
 
-    @Published private(set) var rows: [LeaderboardRow] = []
     @Published private(set) var friendIds: Set<UUID> = []
     @Published var isLoading = false
     @Published var errorMessage: String?
 
+    // Pre-computed sorted entries. updated once when data loads
+    @Published private(set) var entriesWeek:     [LeaderboardEntry] = []
+    @Published private(set) var entriesMonth:    [LeaderboardEntry] = []
+    @Published private(set) var entriesAllTime:  [LeaderboardEntry] = []
+    @Published private(set) var friendEntriesWeek:    [LeaderboardEntry] = []
+    @Published private(set) var friendEntriesMonth:   [LeaderboardEntry] = []
+    @Published private(set) var friendEntriesAllTime: [LeaderboardEntry] = []
+
+    private var rows: [LeaderboardRow] = []
     private var currentUserId: UUID?
     private let logger = Logger(subsystem: "com.PhotoMap.app", category: "LeaderboardViewModel")
 
@@ -27,7 +35,6 @@ final class LeaderboardViewModel: ObservableObject {
             async let rowsFetch: [LeaderboardRow] = supabase
                 .from("leaderboard")
                 .select()
-                .order("points_all_time", ascending: false)
                 .execute()
                 .value
 
@@ -35,6 +42,7 @@ final class LeaderboardViewModel: ObservableObject {
 
             rows = try await rowsFetch
             await friendsFetch
+            recomputeEntries()
             logger.info("Loaded \(self.rows.count) leaderboard entries, \(self.friendIds.count) friends")
         } catch {
             logger.error("Failed to load leaderboard: \(error.localizedDescription)")
@@ -63,39 +71,53 @@ final class LeaderboardViewModel: ObservableObject {
 
     // MARK: - Entries
 
-    /// All users ranked for the given period.
     func entries(for period: LeaderboardScreen.Period) -> [LeaderboardEntry] {
-        ranked(rows: rows, period: period)
+        switch period {
+        case .week:    return entriesWeek
+        case .month:   return entriesMonth
+        case .allTime: return entriesAllTime
+        }
     }
 
-    /// Only the current user and their accepted friends, ranked for the given period.
     func friendEntries(for period: LeaderboardScreen.Period) -> [LeaderboardEntry] {
-        guard let currentId = currentUserId else { return [] }
-        let relevantIds = friendIds.union([currentId])
-        let filtered = rows.filter { relevantIds.contains($0.userId) }
-        return ranked(rows: filtered, period: period)
+        switch period {
+        case .week:    return friendEntriesWeek
+        case .month:   return friendEntriesMonth
+        case .allTime: return friendEntriesAllTime
+        }
     }
 
     // MARK: - Helpers
 
-    private func ranked(rows: [LeaderboardRow], period: LeaderboardScreen.Period) -> [LeaderboardEntry] {
-        let sorted = rows.sorted { points($0, period) > points($1, period) }
-        return sorted.enumerated().map { index, row in
-            LeaderboardEntry(
-                id: row.userId,
-                rank: index + 1,
-                name: row.username,
-                points: points(row, period),
-                isCurrentUser: row.userId == currentUserId
-            )
+    private func recomputeEntries() {
+        entriesWeek    = ranked(rows: rows, keyPath: \.pointsWeek)
+        entriesMonth   = ranked(rows: rows, keyPath: \.pointsMonth)
+        entriesAllTime = ranked(rows: rows, keyPath: \.pointsAllTime)
+
+        let friendRows: [LeaderboardRow]
+        if let currentId = currentUserId {
+            let relevantIds = friendIds.union([currentId])
+            friendRows = rows.filter { relevantIds.contains($0.userId) }
+        } else {
+            friendRows = []
         }
+
+        friendEntriesWeek    = ranked(rows: friendRows, keyPath: \.pointsWeek)
+        friendEntriesMonth   = ranked(rows: friendRows, keyPath: \.pointsMonth)
+        friendEntriesAllTime = ranked(rows: friendRows, keyPath: \.pointsAllTime)
     }
 
-    private func points(_ row: LeaderboardRow, _ period: LeaderboardScreen.Period) -> Int {
-        switch period {
-        case .week:    return row.pointsWeek
-        case .month:   return row.pointsMonth
-        case .allTime: return row.pointsAllTime
-        }
+    private func ranked(rows: [LeaderboardRow], keyPath: KeyPath<LeaderboardRow, Int>) -> [LeaderboardEntry] {
+        rows.sorted { $0[keyPath: keyPath] > $1[keyPath: keyPath] }
+            .enumerated()
+            .map { index, row in
+                LeaderboardEntry(
+                    id: row.userId,
+                    rank: index + 1,
+                    name: row.username,
+                    points: row[keyPath: keyPath],
+                    isCurrentUser: row.userId == currentUserId
+                )
+            }
     }
 }

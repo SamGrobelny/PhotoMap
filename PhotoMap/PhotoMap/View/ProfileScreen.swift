@@ -42,15 +42,15 @@ struct ProfileScreen: View {
                     } label: {
                         Image(systemName: "gearshape")
                     }
+                    .accessibilityIdentifier("settingsButton")
                     .accessibilityLabel("Settings")
                     .accessibilityHint("Sign out of your account")
                 }
             }
             .alert("Sign Out", isPresented: $showSignOutAlert) {
                 Button("Cancel", role: .cancel) {}
-                    .accessibilityLabel("Cancel sign out")
-                Button("Sign Out", role: .destructive) { onLogout() }
-                    .accessibilityLabel("Confirm sign out")
+                Button("Confirm", role: .destructive) { onLogout() }
+                    .accessibilityIdentifier("confirmSignOutButton")
             } message: {
                 Text("Are you sure you want to sign out?")
             }
