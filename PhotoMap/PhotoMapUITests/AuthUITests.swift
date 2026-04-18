@@ -12,6 +12,25 @@ final class AuthUITests: XCTestCase {
         app.launch()
     }
 
+    // MARK: - Form Validation
+
+    /// Verifies the login button is disabled until both email and password are filled.
+    func testLoginFormValidation_buttonDisabledUntilFieldsFilled() throws {
+        let authButton = app.buttons["authButton"]
+        XCTAssertTrue(authButton.waitForExistence(timeout: 5))
+        XCTAssertFalse(authButton.isEnabled, "Auth button should be disabled with empty fields")
+
+        let emailField = app.textFields["emailField"]
+        emailField.tap()
+        emailField.typeText("test@example.com")
+        XCTAssertFalse(authButton.isEnabled, "Auth button should still be disabled with only email filled")
+
+        let passwordField = app.secureTextFields["passwordField"]
+        passwordField.tap()
+        passwordField.typeText("password123")
+        XCTAssertTrue(authButton.isEnabled, "Auth button should be enabled once both fields are filled")
+    }
+
     // MARK: - Combined Flow
 
     /// Full auth lifecycle:
