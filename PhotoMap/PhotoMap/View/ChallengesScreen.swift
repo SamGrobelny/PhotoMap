@@ -87,7 +87,7 @@ struct ChallengesScreen: View {
     }
 
     private var filteredChallenges: [Challenge] {
-        viewModel.challenges.filter { $0.isCompleted == (selectedFilter == .completed) }
+        selectedFilter == .active ? viewModel.activeChallenges : viewModel.completedChallenges
     }
 
     var body: some View {

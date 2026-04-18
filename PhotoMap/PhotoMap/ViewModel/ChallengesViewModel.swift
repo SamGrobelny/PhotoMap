@@ -7,7 +7,8 @@ import Supabase
 @MainActor
 final class ChallengesViewModel: ObservableObject {
 
-    @Published private(set) var challenges: [Challenge] = []
+    @Published private(set) var activeChallenges: [Challenge] = []
+    @Published private(set) var completedChallenges: [Challenge] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
 
@@ -33,7 +34,9 @@ final class ChallengesViewModel: ObservableObject {
                 .execute()
                 .value
             
-            challenges = results.map(Challenge.init)
+            let mapped = results.map(Challenge.init)
+            activeChallenges    = mapped.filter { !$0.isCompleted }
+            completedChallenges = mapped.filter {  $0.isCompleted }
 
             let hasIncomplete = results.contains { !$0.isCompleted }
             if !hasIncomplete {
@@ -82,6 +85,8 @@ final class ChallengesViewModel: ObservableObject {
             .execute()
             .value
 
-        challenges = results.map(Challenge.init)
+        let mapped = results.map(Challenge.init)
+        activeChallenges    = mapped.filter { !$0.isCompleted }
+        completedChallenges = mapped.filter {  $0.isCompleted }
     }
 }
