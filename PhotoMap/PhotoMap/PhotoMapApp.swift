@@ -43,7 +43,8 @@ struct PhotoMapApp: App {
                     isLoggedIn = true
                 })
                 .task {
-                    if supabase.auth.currentSession != nil {
+                    let isUITesting = ProcessInfo.processInfo.arguments.contains("-uitesting")
+                    if !isUITesting && supabase.auth.currentSession != nil {
                         isLoggedIn = true
                     }
                 }

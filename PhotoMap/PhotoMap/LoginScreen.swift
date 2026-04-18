@@ -40,6 +40,7 @@ struct LoginScreen: View {
                         .textContentType(.emailAddress)
                         .keyboardType(.emailAddress)
                         .autocapitalization(.none)
+                        .accessibilityIdentifier("emailField")
                         .accessibilityLabel("Email address")
                         .accessibilityHint("Enter your email address")
 
@@ -59,6 +60,7 @@ struct LoginScreen: View {
                                 .onChange(of: username) {
                                     checkUsernameAvailability()
                                 }
+                                .accessibilityIdentifier("usernameField")
                                 .accessibilityLabel("Username")
                                 .accessibilityHint("Choose a unique username")
                             if isCheckingUsername {
@@ -83,6 +85,7 @@ struct LoginScreen: View {
                         .textFieldStyle(.roundedBorder)
                         .textContentType(.password)
                         .autocapitalization(.none)
+                        .accessibilityIdentifier("passwordField")
                         .accessibilityLabel("Password")
                         .accessibilityHint(isSignUp ? "Create a password with at least 8 characters" : "Enter your password")
                 }
@@ -141,6 +144,7 @@ struct LoginScreen: View {
                 .disabled(!formIsComplete || isLoading)
                 .padding(.horizontal, 40)
                 .padding(.top, 20)
+                .accessibilityIdentifier("authButton")
 
                 Button(action: {
                     isSignUp.toggle()
@@ -154,6 +158,7 @@ struct LoginScreen: View {
                         .font(.subheadline)
                         .foregroundColor(.blue)
                 }
+                .accessibilityIdentifier("toggleModeButton")
 
                 Spacer()
             }

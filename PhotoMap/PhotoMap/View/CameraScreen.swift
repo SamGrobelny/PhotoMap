@@ -9,6 +9,7 @@
 import SwiftUI
 import AVFoundation
 import CoreLocation
+import SwiftData
 
 struct CameraScreen: View {
 
