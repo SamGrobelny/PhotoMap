@@ -9,11 +9,11 @@ struct ChallengeRow: Codable, Identifiable {
     let difficulty: Int  // 1 = Easy, 2 = Medium, 3 = Hard
     let goal: Int
     let unit: String
-    let typeId: Int
+    let behaviorId: Int
 
     enum CodingKeys: String, CodingKey {
         case id, title, description, difficulty, goal, unit
-        case typeId = "type_id"
+        case behaviorId = "behavior_id"
     }
 }
 

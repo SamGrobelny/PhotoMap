@@ -226,7 +226,8 @@ struct AddPhotoSheet: View {
             imageData: imageData,
             location: locationManager.currentLocation,
             timestamp: Date(),
-            caption: ""
+            caption: "",
+            countsTowardChallenges: true
         )
 
         processedPhotos.append(photo)

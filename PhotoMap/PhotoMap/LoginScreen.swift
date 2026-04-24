@@ -29,7 +29,10 @@ struct LoginScreen: View {
         NavigationStack {
             VStack(spacing: 20) {
                 Spacer()
-
+                Image("logo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 250)
                 Text("PhotoMap")
                     .font(.largeTitle)
                     .fontWeight(.bold)

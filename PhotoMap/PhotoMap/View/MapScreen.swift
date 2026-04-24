@@ -55,7 +55,7 @@ struct MapScreen: View {
     private func initializeViewModel() {
         guard viewModel == nil else { return }
         let repository = PhotoRepository(modelContext: modelContext)
-        let vm = MapViewModel(repository: repository)
+        let vm = MapViewModel(repository: repository, progressService: ChallengeProgressService())
         viewModel = vm
         vm.loadEntries()
         logger.info("ViewModel initialized with environment context")

@@ -13,6 +13,23 @@ final class ChallengesViewModel: ObservableObject {
     @Published var errorMessage: String?
 
     private let logger = Logger(subsystem: "com.PhotoMap.app", category: "ChallengesViewModel")
+    private var progressObserver: NSObjectProtocol?
+
+    init() {
+        progressObserver = NotificationCenter.default.addObserver(
+            forName: .challengeProgressUpdated,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { [weak self] in await self?.load() }
+        }
+    }
+
+    deinit {
+        if let progressObserver {
+            NotificationCenter.default.removeObserver(progressObserver)
+        }
+    }
 
     // MARK: - Load
 

@@ -20,6 +20,8 @@ struct ProcessedPhoto: Identifiable {
     let location: CLLocationCoordinate2D?
     let timestamp: Date?
     var caption: String
+    /// True when this photo was captured via the in-app camera. Only these advance challenge progress.
+    var countsTowardChallenges: Bool = false
 
     var hasValidLocation: Bool {
         location != nil
@@ -34,16 +36,20 @@ final class MapViewModel: ObservableObject {
     @Published private(set) var entries: [PhotoEntry] = []
     @Published var errorMessage: String?
     @Published var isLoading: Bool = false
+    /// Titles of challenges that just crossed their goal. The UI consumes and clears this.
+    @Published var completedChallengeTitles: [String] = []
 
     // MARK: - Dependencies
 
     private let repository: PhotoRepository
+    private let progressService: ChallengeProgressServicing?
     private let logger = Logger(subsystem: "com.PhotoMap.app", category: "MapViewModel")
 
     // MARK: - Initializer
 
-    init(repository: PhotoRepository) {
+    init(repository: PhotoRepository, progressService: ChallengeProgressServicing? = nil) {
         self.repository = repository
+        self.progressService = progressService
         logger.info("MapViewModel initialized")
     }
 
@@ -74,9 +80,12 @@ final class MapViewModel: ObservableObject {
         timestamp: Date = Date(),
         originalFilename: String? = nil,
         deviceModel: String? = nil,
-        altitude: Double? = nil
+        altitude: Double? = nil,
+        countsTowardChallenges: Bool = false
     ) {
         logger.info("Adding new photo at (\(latitude), \(longitude))")
+
+        let history = historySnapshot()
 
         let entry = PhotoEntry(
             caption: caption,
@@ -96,6 +105,17 @@ final class MapViewModel: ObservableObject {
         } catch {
             logger.error("Failed to add photo: \(error.localizedDescription)")
             errorMessage = "Failed to save photo: \(error.localizedDescription)"
+            return
+        }
+
+        if countsTowardChallenges {
+            dispatchProgress(
+                latitude: latitude,
+                longitude: longitude,
+                caption: caption,
+                timestamp: timestamp,
+                priorPhotos: history
+            )
         }
     }
 
@@ -161,7 +181,9 @@ final class MapViewModel: ObservableObject {
     func addPhotos(_ photos: [ProcessedPhoto]) {
         logger.info("Adding \(photos.count) photos in batch")
 
+        var history = historySnapshot()
         var successCount = 0
+        var challengeTriggers: [(lat: Double, lon: Double, caption: String, timestamp: Date, priorPhotos: [PhotoHistoryEntry])] = []
 
         for photo in photos {
             guard let location = photo.location else {
@@ -169,17 +191,33 @@ final class MapViewModel: ObservableObject {
                 continue
             }
 
+            let timestamp = photo.timestamp ?? Date()
             let entry = PhotoEntry(
                 caption: photo.caption,
                 latitude: location.latitude,
                 longitude: location.longitude,
-                timestamp: photo.timestamp ?? Date(),
+                timestamp: timestamp,
                 imageData: photo.imageData
             )
 
             do {
                 try repository.create(entry)
                 successCount += 1
+
+                if photo.countsTowardChallenges {
+                    challengeTriggers.append((
+                        location.latitude,
+                        location.longitude,
+                        photo.caption,
+                        timestamp,
+                        history
+                    ))
+                    history.append(PhotoHistoryEntry(
+                        latitude: location.latitude,
+                        longitude: location.longitude,
+                        timestamp: timestamp
+                    ))
+                }
             } catch {
                 logger.error("Failed to add photo: \(error.localizedDescription)")
             }
@@ -191,6 +229,47 @@ final class MapViewModel: ObservableObject {
         if successCount < photos.count {
             let skipped = photos.count - successCount
             errorMessage = "Added \(successCount) photos. \(skipped) were skipped (no GPS data)."
+        }
+
+        for trigger in challengeTriggers {
+            dispatchProgress(
+                latitude: trigger.lat,
+                longitude: trigger.lon,
+                caption: trigger.caption,
+                timestamp: trigger.timestamp,
+                priorPhotos: trigger.priorPhotos
+            )
+        }
+    }
+
+    // MARK: - Challenge Progress
+
+    private func historySnapshot() -> [PhotoHistoryEntry] {
+        entries.map {
+            PhotoHistoryEntry(latitude: $0.latitude, longitude: $0.longitude, timestamp: $0.timestamp)
+        }
+    }
+
+    private func dispatchProgress(
+        latitude: Double,
+        longitude: Double,
+        caption: String,
+        timestamp: Date,
+        priorPhotos: [PhotoHistoryEntry]
+    ) {
+        guard let service = progressService else { return }
+        Task { [weak self] in
+            let titles = await service.recordPhoto(
+                latitude: latitude,
+                longitude: longitude,
+                caption: caption,
+                timestamp: timestamp,
+                priorPhotos: priorPhotos
+            )
+            guard !titles.isEmpty else { return }
+            await MainActor.run {
+                self?.completedChallengeTitles.append(contentsOf: titles)
+            }
         }
     }
 }

@@ -10,7 +10,7 @@ struct Challenge: Identifiable {
     let current: Int
     let goal: Int
     let unit: String
-    let typeId: Int
+    let behaviorId: Int
     let timeRemaining: String
     let isCompleted: Bool
 
@@ -51,7 +51,7 @@ struct Challenge: Identifiable {
         current = userChallenge.progress
         goal = row.goal
         unit = row.unit
-        typeId = row.typeId
+        behaviorId = row.behaviorId
         isCompleted = userChallenge.isCompleted
         timeRemaining = userChallenge.isCompleted
             ? "Completed"
