@@ -76,6 +76,17 @@ struct FriendsScreen: View {
                 }
             }
 
+            if !viewModel.outgoingRequests.isEmpty {
+                Section("Sent") {
+                    ForEach(viewModel.outgoingRequests) { profile in
+                        OutgoingRequestRow(
+                            profile: profile,
+                            onCancel: { Task { await viewModel.cancelRequest(to: profile.id) } }
+                        )
+                    }
+                }
+            }
+
             Section("Friends") {
                 if viewModel.isLoading {
                     HStack {
@@ -179,6 +190,36 @@ private struct PendingRequestRow: View {
         .padding(.vertical, 2)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Friend request from \(profile.username)")
+    }
+}
+
+// MARK: - Outgoing Request Row
+
+private struct OutgoingRequestRow: View {
+    let profile: UserProfile
+    let onCancel: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            AvatarView(username: profile.username, size: 40)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(profile.username)
+                    .font(.subheadline)
+                Text("Pending")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button("Cancel", action: onCancel)
+                .buttonStyle(.bordered)
+                .tint(.red)
+                .controlSize(.small)
+                .accessibilityLabel("Cancel request to \(profile.username)")
+                .accessibilityHint("Withdraw your pending friend request")
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Outgoing request to \(profile.username), pending")
     }
 }
 

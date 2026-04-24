@@ -18,7 +18,7 @@ final class ChallengesTests: XCTestCase {
             difficulty: difficulty,
             goal: goal,
             unit: "photos",
-            typeId: 1
+            behaviorId: 1
         )
         return UserChallengeWithDetails(
             userId: UUID(),

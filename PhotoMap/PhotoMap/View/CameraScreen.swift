@@ -27,6 +27,10 @@ struct CameraScreen: View {
     @State private var caption: String = ""
     @State private var isSaving: Bool = false
 
+    // Challenge completion banner
+    @State private var completedTitles: [String] = []
+    @State private var bannerDismissTask: Task<Void, Never>?
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
@@ -38,6 +42,13 @@ struct CameraScreen: View {
             }
             .padding()
             .navigationTitle("Camera")
+            .overlay(alignment: .top) {
+                if !completedTitles.isEmpty {
+                    challengeCompletionBanner
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .animation(.easeInOut, value: completedTitles)
             .toolbar {
                 if capturedImage != nil {
                     ToolbarItem(placement: .topBarLeading) {
@@ -73,6 +84,42 @@ struct CameraScreen: View {
                 initializeViewModel()
                 locationManager.startUpdatingLocation()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .challengeProgressUpdated)) { note in
+                guard let titles = note.userInfo?["completedTitles"] as? [String], !titles.isEmpty else { return }
+                showCompletionBanner(titles: titles)
+            }
+        }
+    }
+
+    private var challengeCompletionBanner: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "checkmark.seal.fill")
+                .foregroundStyle(.yellow)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(completedTitles.count == 1 ? "Challenge Completed" : "Challenges Completed")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                Text(completedTitles.joined(separator: ", "))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Challenge completed: \(completedTitles.joined(separator: ", "))")
+    }
+
+    private func showCompletionBanner(titles: [String]) {
+        completedTitles = titles
+        bannerDismissTask?.cancel()
+        bannerDismissTask = Task {
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled else { return }
+            await MainActor.run { completedTitles = [] }
         }
     }
 
@@ -253,7 +300,9 @@ struct CameraScreen: View {
     private func initializeViewModel() {
         guard viewModel == nil else { return }
         let repository = PhotoRepository(modelContext: modelContext)
-        viewModel = MapViewModel(repository: repository)
+        let vm = MapViewModel(repository: repository, progressService: ChallengeProgressService())
+        vm.loadEntries()
+        viewModel = vm
     }
 
     private func openCamera() {
@@ -298,7 +347,8 @@ struct CameraScreen: View {
             longitude: location.longitude,
             caption: caption,
             imageData: imageData,
-            timestamp: Date()
+            timestamp: Date(),
+            countsTowardChallenges: true
         )
 
         isSaving = false

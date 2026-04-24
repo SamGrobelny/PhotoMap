@@ -69,7 +69,7 @@ final class PerformanceTests: XCTestCase {
         (0..<count).map { i in
             let row = ChallengeRow(
                 id: UUID(), title: "Challenge \(i)", description: "Desc \(i)",
-                difficulty: (i % 3) + 1, goal: 10, unit: "photos", typeId: 1
+                difficulty: (i % 3) + 1, goal: 10, unit: "photos", behaviorId: 1
             )
             return UserChallengeWithDetails(
                 userId: UUID(), challengeId: row.id,

@@ -8,13 +8,14 @@ import Supabase
 final class FriendsViewModel: ObservableObject {
     @Published private(set) var friends: [UserProfile] = []
     @Published private(set) var pendingRequests: [UserProfile] = []
+    @Published private(set) var outgoingRequests: [UserProfile] = []
     @Published private(set) var searchResults: [UserProfile] = []
     @Published var isLoading = false
     @Published var isSearching = false
     @Published var errorMessage: String?
 
     private(set) var currentUserId: UUID?
-    private var allFriendships: [Friendship] = []
+    @Published private var allFriendships: [Friendship] = []
     private let logger = Logger(subsystem: "com.PhotoMap.app", category: "FriendsViewModel")
 
     // MARK: - Relationship Status
@@ -72,7 +73,7 @@ final class FriendsViewModel: ObservableObject {
 
             // Pending incoming requests
             let requesterIds = allFriendships
-                .filter { $0.status == .pending && $0.addresseeId == userId }
+                .filter { $0.status == .pending && ($0.addresseeId == userId)}
                 .map { $0.requesterId }
 
             pendingRequests = requesterIds.isEmpty ? [] : try await supabase
@@ -82,7 +83,19 @@ final class FriendsViewModel: ObservableObject {
                 .execute()
                 .value
 
-            logger.info("Loaded \(self.friends.count) friends, \(self.pendingRequests.count) pending requests")
+            // Pending outgoing requests
+            let addresseeIds = allFriendships
+                .filter { $0.status == .pending && $0.requesterId == userId }
+                .map { $0.addresseeId }
+
+            outgoingRequests = addresseeIds.isEmpty ? [] : try await supabase
+                .from("profiles")
+                .select()
+                .in("id", values: addresseeIds)
+                .execute()
+                .value
+
+            logger.info("Loaded \(self.friends.count) friends, \(self.pendingRequests.count) incoming requests, \(self.outgoingRequests.count) outgoing requests")
         } catch {
             logger.error("Failed to load friends data: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
@@ -138,9 +151,36 @@ final class FriendsViewModel: ObservableObject {
                 status: .pending,
                 createdAt: Date()
             ))
+            if let profile = searchResults.first(where: { $0.id == userId }),
+               !outgoingRequests.contains(where: { $0.id == userId }) {
+                outgoingRequests.append(profile)
+            }
             logger.info("Friend request sent to \(userId)")
         } catch {
             logger.error("Failed to send request: \(error.localizedDescription)")
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Cancel Outgoing Request
+
+    func cancelRequest(to userId: UUID) async {
+        guard let currentId = currentUserId else { return }
+        do {
+            try await supabase
+                .from("friendships")
+                .delete()
+                .eq("requester_id", value: currentId)
+                .eq("addressee_id", value: userId)
+                .execute()
+
+            outgoingRequests.removeAll { $0.id == userId }
+            allFriendships.removeAll {
+                $0.requesterId == currentId && $0.addresseeId == userId
+            }
+            logger.info("Cancelled outgoing request to \(userId)")
+        } catch {
+            logger.error("Failed to cancel request: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
         }
     }
